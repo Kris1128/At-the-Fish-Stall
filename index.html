@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>At the Fish Stall · 集市英语小游戏</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Comic Sans MS", "Chalkboard SE", "PingFang SC", "Microsoft YaHei", sans-serif;
+    background: linear-gradient(#bde4ff 0%, #eaf8ff 35%, #ffeccb 65%, #ffd8a8 100%);
+    background-attachment: fixed;
+    color: #3a2c1a;
+    padding: 14px 14px 48px;
+  }
+  header { text-align: center; margin-bottom: 14px; }
+  h1 {
+    font-size: 30px; margin: 6px 0; color: #c1440e;
+    text-shadow: 2px 2px 0 #fff, 4px 4px 0 rgba(0,0,0,.08);
+  }
+  .sub { font-size: 13px; color: #7a5c3a; margin: 0 0 10px; line-height: 1.7; }
+  .toggle {
+    border: 2px solid #c98b4b; background: #fff8ec; border-radius: 999px;
+    padding: 6px 16px; cursor: pointer; font-family: inherit; font-size: 13px; color: #8b4513;
+  }
+
+  /* ===== 摊位网格：2 × 2 ===== */
+  #market {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    max-width: 1180px;
+    margin: 0 auto;
+  }
+  @media (max-width: 700px) {
+    #market { grid-template-columns: 1fr; }
+  }
+
+  .stall {
+    position: relative;
+    min-width: 0;
+    background: #fff8ec;
+    border: 4px solid #c98b4b;
+    border-radius: 18px;
+    padding: 10px 14px 16px;
+    box-shadow: 0 6px 0 rgba(201,139,75,.35);
+  }
+  .awning {
+    height: 14px; border-radius: 8px; margin-bottom: 10px;
+    background: repeating-linear-gradient(90deg, var(--c) 0 14px, #fff 14px 28px);
+    border: 2px solid #fff;
+    box-shadow: inset 0 -3px 0 rgba(0,0,0,.06);
+  }
+  .owner { display: flex; align-items: center; gap: 10px; }
+  .face {
+    font-size: 44px; line-height: 1; background: #fff;
+    border: 3px solid var(--c); border-radius: 50%;
+    width: 72px; height: 72px; cursor: pointer;
+    display: grid; place-items: center;
+    transition: transform .12s;
+    flex: none;
+  }
+  .face:hover { transform: scale(1.08) rotate(-4deg); }
+  .face:active { transform: scale(.94); }
+  .oname { font-size: 17px; font-weight: bold; color: #8b4513; }
+  .hint { font-size: 11px; color: #b08a5f; }
+
+  .goods { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .item {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 6px;
+    background: #fff; border: 3px dashed #e0bd90; border-radius: 12px;
+    padding: 8px 10px; cursor: pointer; transition: .15s;
+    flex: 1 1 130px; min-width: 0;
+  }
+  .item:hover { background: #fff4e0; border-color: var(--c); transform: translateY(-2px); }
+  .item:active { transform: scale(.96); }
+  .gicon { font-size: 28px; }
+  .gname { font-size: 14px; font-weight: bold; }
+  .price-btn {
+    font-family: inherit; font-size: 12px; font-weight: bold;
+    background: #ffe0b2; border: 2px solid #d99a4e; color: #8b4513;
+    border-radius: 999px; padding: 2px 9px; cursor: pointer;
+    transition: .15s;
+  }
+  .price-btn:hover { background: #ffcf87; }
+  .price-btn.asked {
+    background: #d9f0c8; border-color: #7cb342; color: #33691e;
+  }
+
+  /* 永久价格标签 */
+  .ptag {
+    flex-basis: 100%;
+    display: none;
+    font-size: 12px;
+    font-weight: bold;
+    color: #c1440e;
+    background: #fff3d6;
+    border-radius: 8px;
+    padding: 3px 8px;
+    margin-top: 2px;
+    animation: pop .25s ease-out;
+  }
+  .ptag.show { display: block; }
+  @keyframes pop {
+    from { transform: scale(.85); opacity: 0; }
+    to   { transform: scale(1);   opacity: 1; }
+  }
+
+  .bubble {
+    position: absolute; left: 12px; right: 12px; top: 74px;
+    background: #fffdf5; border: 3px solid var(--c); border-radius: 14px;
+    padding: 10px 12px; font-size: 14px; line-height: 1.5; color: #333;
+    opacity: 0; transform: translateY(-8px); transition: .2s;
+    pointer-events: none; z-index: 10;
+    box-shadow: 0 4px 12px rgba(0,0,0,.12);
+  }
+  .bubble.show { opacity: 1; transform: translateY(0); }
+
+  /* ===== 购物篮 ===== */
+  #basketBar {
+    max-width: 1180px; margin: 22px auto 0;
+    background: #fff8ec; border: 4px solid #c98b4b; border-radius: 18px;
+    padding: 12px 16px; box-shadow: 0 6px 0 rgba(201,139,75,.35);
+  }
+  .basket-head { font-size: 17px; font-weight: bold; color: #8b4513; margin-bottom: 8px; }
+  #basketItems {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    min-height: 46px; align-items: center;
+  }
+  .chip {
+    display: flex; align-items: center; gap: 6px;
+    background: #d9f0c8; border: 3px solid #7cb342; border-radius: 999px;
+    padding: 5px 12px; font-family: inherit; font-size: 14px; font-weight: bold;
+    color: #33691e; cursor: pointer; transition: .15s;
+  }
+  .chip:hover { background: #ffcdd2; border-color: #e53935; color: #b71c1c; }
+  .chip .cx { font-size: 12px; opacity: .7; }
+  .empty { font-size: 13px; color: #b08a5f; }
+  .basket-foot {
+    display: flex; justify-content: space-between; align-items: center; margin-top: 12px;
+  }
+  #basketTotal { font-size: 18px; font-weight: bold; color: #c1440e; }
+  #checkout {
+    font-family: inherit; font-size: 15px; font-weight: bold;
+    background: #ffb300; border: 3px solid #e69500; color: #fff;
+    border-radius: 999px; padding: 8px 22px; cursor: pointer;
+    box-shadow: 0 4px 0 #c17d00; transition: .1s;
+  }
+  #checkout:active { transform: translateY(3px); box-shadow: 0 1px 0 #c17d00; }
+
+  /* ===== 小朋友气泡 ===== */
+  #childBubble {
+    position: fixed; left: 50%; bottom: 24px;
+    transform: translate(-50%, 16px);
+    background: #dff3ff; border: 3px solid #4a90d9; border-radius: 999px;
+    padding: 10px 22px; font-size: 17px; font-weight: bold; color: #14568f;
+    opacity: 0; transition: .22s; pointer-events: none; z-index: 999;
+    max-width: 90vw; text-align: center;
+    box-shadow: 0 6px 18px rgba(0,0,0,.15);
+  }
+  #childBubble.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .ghost {
+    position: fixed; z-index: 99; pointer-events: none;
+    transition: transform .6s cubic-bezier(.4,0,.6,1), opacity .6s;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🐟 At the Fish Stall 🍎</h1>
+  <p class="sub">
+    点老板的头 → 听吆喝 ｜ 点食物 → 放进购物篮 ｜ 点购物篮里的食物 → 放回摊位 ｜ 点 <b>$?</b> → 问价格
+  </p>
+  <button id="soundToggle" class="toggle">🔊 Sound: ON</button>
+</header>
+
+<main id="market"></main>
+
+<section id="basketBar">
+  <div class="basket-head">🧺 My Shopping Basket</div>
+  <div id="basketItems"></div>
+  <div class="basket-foot">
+    <span id="basketTotal">Total: $0</span>
+    <button id="checkout">Checkout 💰</button>
+  </div>
+</section>
+
+<div id="childBubble">🧒</div>
+
+<script>
+/* ==================== 1. 数据配置 ==================== */
+const STALLS = {
+  bear: {
+    name: 'Mr. Bear', icon: '🐻', color: '#4a90d9', pitch: 0.8, rate: 0.85,
+    call: 'Come and buy my fish. They are very fresh. Come and buy my prawns. They are very fresh.',
+    foods: [
+      { id: 'fish',   en: 'fish',   icon: '🐟', price: 10 },
+      { id: 'prawns', en: 'prawns', icon: '🦐', price: 12 }
+    ]
+  },
+  elephant: {
+    name: 'Mr. Elephant', icon: '🐘', color: '#e74c3c', pitch: 0.6, rate: 0.8,
+    call: 'Come and buy my apples. They are very fresh.',
+    foods: [ { id: 'apples', en: 'apples', icon: '🍎', price: 5 } ]
+  },
+  goat: {
+    name: 'Mr. Goat', icon: '🐐', color: '#27ae60', pitch: 1.35, rate: 0.9,
+    call: 'Come and buy my potatoes. They are very fresh.',
+    foods: [ { id: 'potatoes', en: 'potatoes', icon: '🥔', price: 2 } ]
+  },
+  monkey: {
+    name: 'Mr. Monkey', icon: '🐵', color: '#f1c40f', pitch: 1.7, rate: 0.92,
+    call: 'Come and buy my bananas. They are very fresh.',
+    foods: [ { id: 'bananas', en: 'bananas', icon: '🍌', price: 6 } ]
+  }
+};
+
+/* ==================== 2. 数字转英文 ==================== */
+const ONES = ['zero','one','two','three','four','five','six','seven','eight','nine','ten',
+              'eleven','twelve','thirteen','fourteen','fifteen','sixteen','seventeen','eighteen','nineteen'];
+const TENS = ['','','twenty','thirty','forty','fifty','sixty','seventy','eighty','ninety'];
+function toWord(n) {
+  if (n < 20) return ONES[n];
+  if (n < 100) {
+    const t = Math.floor(n / 10), r = n % 10;
+    return TENS[t] + (r ? '-' + ONES[r] : '');
+  }
+  const h = Math.floor(n / 100), r = n % 100;
+  return ONES[h] + ' hundred' + (r ? ' and ' + toWord(r) : '');
+}
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+/* ==================== 3. 语音引擎 ==================== */
+let soundOn = true;
+let cachedVoices = [];
+function loadVoices() {
+  if ('speechSynthesis' in window) cachedVoices = speechSynthesis.getVoices();
+}
+loadVoices();
+if ('speechSynthesis' in window) speechSynthesis.onvoiceschanged = loadVoices;
+
+function speak(text, { pitch = 1, rate = 0.85 } = {}) {
+  if (!soundOn || !('speechSynthesis' in window)) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();                       // 打断上一句，点几次吆喝几次
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang  = 'en-US';
+  u.pitch = pitch;
+  u.rate  = rate;
+  const v = cachedVoices.find(v => v.lang === 'en-US')
+         || cachedVoices.find(v => v.lang.startsWith('en'));
+  if (v) u.voice = v;
+  setTimeout(() => synth.speak(u), 50);
+}
+
+/* ==================== 4. 生成摊位界面 ==================== */
+const market = document.getElementById('market');
+
+Object.entries(STALLS).forEach(([id, s]) => {
+  const card = document.createElement('div');
+  card.className = 'stall';
+  card.dataset.owner = id;
+  card.style.setProperty('--c', s.color);
+  card.innerHTML = `
+    <div class="awning"></div>
+    <div class="owner">
+      <button class="face" aria-label="点我吆喝">${s.icon}</button>
+      <div>
+        <div class="oname">${s.name}</div>
+        <div class="hint">点我吆喝 👆</div>
+      </div>
+    </div>
+    <div class="goods">
+      ${s.foods.map(f => `
+        <div class="item" data-food="${f.id}">
+          <span class="gicon">${f.icon}</span>
+          <span class="gname">${f.en}</span>
+          <button class="price-btn" data-food="${f.id}">$?</button>
+          <span class="ptag"></span>
+        </div>`).join('')}
+    </div>
+    <div class="bubble"></div>
+  `;
+  market.appendChild(card);
+});
+
+/* ==================== 5. 气泡工具 ==================== */
+function stallSay(ownerId, text) {
+  const card = document.querySelector(`.stall[data-owner="${ownerId}"]`);
+  const b = card.querySelector('.bubble');
+  b.textContent = text;
+  b.classList.add('show');
+  clearTimeout(b._timer);
+  b._timer = setTimeout(() => b.classList.remove('show'),
+                        Math.max(3000, text.length * 65));
+}
+
+const childBubble = document.getElementById('childBubble');
+function showChildBubble(text) {
+  childBubble.textContent = '🧒 ' + text;
+  childBubble.classList.add('show');
+  clearTimeout(childBubble._timer);
+  childBubble._timer = setTimeout(() => childBubble.classList.remove('show'), 2800);
+}
+
+/* ==================== 6. 购物篮 ==================== */
+let basket = [];
+const basketItemsEl = document.getElementById('basketItems');
+const basketTotalEl = document.getElementById('basketTotal');
+
+function renderBasket() {
+  basketItemsEl.innerHTML = '';
+  if (!basket.length) {
+    basketItemsEl.innerHTML = '<span class="empty">Your basket is empty. 去挑点好吃的吧！</span>';
+  }
+  basket.forEach((it, i) => {
+    const chip = document.createElement('button');
+    chip.className = 'chip';
+    chip.innerHTML = `<span>${it.icon}</span><span>${it.en}</span><span class="cx">✕</span>`;
+    chip.addEventListener('click', () => removeItem(i));
+    basketItemsEl.appendChild(chip);
+  });
+  const total = basket.reduce((sum, it) => sum + it.price, 0);
+  basketTotalEl.textContent = `Total: $${total}`;
+}
+renderBasket();
+
+/* ==================== 7. 飞入动画 ==================== */
+function flyToBasket(fromEl, iconText) {
+  if (!fromEl) return;
+  const from = fromEl.getBoundingClientRect();
+  const to   = document.getElementById('basketBar').getBoundingClientRect();
+  const g = document.createElement('div');
+  g.className = 'ghost';
+  g.textContent = iconText;
+  g.style.left = from.left + 'px';
+  g.style.top  = from.top + 'px';
+  g.style.fontSize = '32px';
+  document.body.appendChild(g);
+  requestAnimationFrame(() => {
+    g.style.transform =
+      `translate(${to.left + 40 - from.left}px, ${to.top + 20 - from.top}px) scale(.55)`;
+    g.style.opacity = '0.15';
+  });
+  setTimeout(() => g.remove(), 700);
+}
+
+/* ==================== 8. 核心交互 ==================== */
+// 8.1 点脑袋 → 吆喝
+function ownerCall(ownerId) {
+  const s = STALLS[ownerId];
+  stallSay(ownerId, s.call);
+  speak(s.call, { pitch: s.pitch, rate: s.rate });
+}
+
+// 8.2 点食物 → I want to buy ...
+function addToBasket(ownerId, foodId, srcEl) {
+  const food = STALLS[ownerId].foods.find(f => f.id === foodId);
+  basket.push({ ...food, ownerId });
+  renderBasket();
+  flyToBasket(srcEl.querySelector('.gicon'), food.icon);
+
+  const sentence = `I want to buy ${food.en}.`;
+  showChildBubble(sentence);
+  speak(sentence, { pitch: 1.35, rate: 0.9 });
+}
+
+// 8.3 点篮子里的食物 → I don't want to buy ...
+function removeItem(index) {
+  const it = basket[index];
+  if (!it) return;
+  basket.splice(index, 1);
+  renderBasket();
+
+  const sentence = `I don't want to buy ${it.en}.`;
+  showChildBubble(sentence);
+  speak(sentence, { pitch: 1.3, rate: 0.9 });
+}
+
+// 8.4 点 $? → How much for one kilogram?  （答完价格永久显示）
+function askPrice(ownerId, foodId) {
+  const s = STALLS[ownerId];
+  const food = s.foods.find(f => f.id === foodId);
+  const card = document.querySelector(`.stall[data-owner="${ownerId}"]`);
+  const item = card.querySelector(`.item[data-food="${foodId}"]`);
+  const btn  = item.querySelector('.price-btn');
+  const tag  = item.querySelector('.ptag');
+
+  const q = 'How much for one kilogram?';
+  showChildBubble(q);
+  speak(q, { pitch: 1.35, rate: 0.9 });
+
+  setTimeout(() => {
+    const priceWord = cap(toWord(food.price));
+    const answer    = `${priceWord} dollars.`;
+    stallSay(ownerId, answer);
+    speak(answer, { pitch: s.pitch, rate: s.rate });
+
+    // 👉 价格永久留在摊位上
+    btn.textContent = '$' + food.price;
+    btn.classList.add('asked');
+    tag.textContent = `${priceWord} dollars / kg`;
+    tag.classList.add('show');
+  }, 1700);
+}
+
+/* ==================== 9. 事件委托 ==================== */
+market.addEventListener('click', e => {
+  const face = e.target.closest('.face');
+  if (face) {
+    ownerCall(face.closest('.stall').dataset.owner);
+    return;
+  }
+  const pb = e.target.closest('.price-btn');
+  if (pb) {
+    askPrice(pb.closest('.stall').dataset.owner, pb.dataset.food);
+    return;
+  }
+  const item = e.target.closest('.item');
+  if (item) {
+    addToBasket(item.closest('.stall').dataset.owner, item.dataset.food, item);
+  }
+});
+
+/* ==================== 10. 结算 & 开关 ==================== */
+document.getElementById('checkout').addEventListener('click', () => {
+  if (!basket.length) {
+    const s = 'My basket is empty!';
+    showChildBubble(s);
+    speak(s, { pitch: 1.35 });
+    return;
+  }
+  const total = basket.reduce((s, it) => s + it.price, 0);
+  const list  = basket.map(it => it.en).join(', ');
+  const s = `I want to buy ${list}. That's ${toWord(total)} dollars.`;
+  showChildBubble(s);
+  speak(s, { pitch: 1.2, rate: 0.85 });
+  basketTotalEl.textContent = `Total: $${total} 💰`;
+});
+
+document.getElementById('soundToggle').addEventListener('click', e => {
+  soundOn = !soundOn;
+  e.target.textContent = soundOn ? '🔊 Sound: ON' : '🔇 Sound: OFF';
+  if (!soundOn && 'speechSynthesis' in window) speechSynthesis.cancel();
+});
+</script>
+</body>
+</html>
